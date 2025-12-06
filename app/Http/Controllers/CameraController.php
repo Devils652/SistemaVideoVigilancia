@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Camera;
-use App\Models\CameraGroup; // <--- IMPORTANTE: Usar el modelo de grupos
+use App\Models\CameraGroup; // <--- Usamos el modelo
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -38,7 +38,6 @@ class CameraController extends Controller
 
         $cameras = $query->orderBy('name')->get();
 
-        // --- LÓGICA DE AGRUPACIÓN ---
         $groupedCameras = $cameras->groupBy(function ($item) {
             return $item->group ?: 'Sin Grupo';
         });
@@ -53,24 +52,21 @@ class CameraController extends Controller
         return view('cameras.index', compact('groupedCameras'));
     }
 
-    // --- NUEVA FUNCIÓN QUE FALTABA ---
     public function storeGroup(Request $request)
     {
         $this->authorize('crear_camaras');
-        
         $request->validate([
             'name' => 'required|string|max:255|unique:camera_groups,name'
         ]);
-
         CameraGroup::create(['name' => $request->name]);
-
         return back()->with('success', 'Grupo creado exitosamente.');
     }
 
     public function create()
     {
         $this->authorize('crear_camaras');
-        return view('cameras.create'); // La vista ya usa \App\Models\CameraGroup::all() directamente
+        $groups = CameraGroup::all(); // <--- Enviamos los grupos
+        return view('cameras.create', compact('groups'));
     }
 
     public function store(Request $request)
@@ -90,14 +86,13 @@ class CameraController extends Controller
             'user_id' => Auth::id(),
         ]);
 
-        return redirect()->route($this->getRedirectRoute())->with('success', 'Cámara registrada correctamente.');
+        return redirect()->route($this->getRedirectRoute())->with('success', 'Cámara registrada.');
     }
 
     public function edit(Camera $camera)
     {
         $this->authorize('editar_camaras');
-        // Enviamos los grupos a la vista de edición
-        $groups = CameraGroup::all(); 
+        $groups = CameraGroup::all(); // <--- Enviamos los grupos aquí también
         return view('cameras.edit', compact('camera', 'groups'));
     }
 
@@ -115,24 +110,13 @@ class CameraController extends Controller
 
         $camera->update($validated);
 
-        return redirect()->route($this->getRedirectRoute())->with('success', 'Cámara actualizada correctamente.');
+        return redirect()->route($this->getRedirectRoute())->with('success', 'Cámara actualizada.');
     }
 
-    public function show(Camera $camera)
-    {
-        $this->authorize('ver_camaras');
-        return view('cameras.show', compact('camera'));
-    }
-
-    public function destroy(Camera $camera)
-    {
-        $this->authorize('borrar_camaras');
-        $camera->delete();
-        return redirect()->route($this->getRedirectRoute())->with('success', 'Cámara eliminada.');
-    }
-
-    private function getRedirectRoute()
-    {
+    // ... (Resto del archivo: show, destroy, getRedirectRoute, multiview, sin cambios) ...
+    public function show(Camera $camera) { $this->authorize('ver_camaras'); return view('cameras.show', compact('camera')); }
+    public function destroy(Camera $camera) { $this->authorize('borrar_camaras'); $camera->delete(); return redirect()->route($this->getRedirectRoute())->with('success', 'Cámara eliminada.'); }
+    private function getRedirectRoute() {
         $role = Auth::user()->role?->name ?? 'user';
         return match ($role) {
             'admin' => 'admin.cameras.index',
@@ -141,11 +125,5 @@ class CameraController extends Controller
             default => 'user.cameras.index',
         };
     }
-
-    public function multiview()
-    {
-        $this->authorize('ver_camaras');
-        $cameras = Camera::where('status', true)->orderBy('name')->get();
-        return view('cameras.multiview', compact('cameras'));
-    }
+    public function multiview() { $this->authorize('ver_camaras'); $cameras = Camera::where('status', true)->orderBy('name')->get(); return view('cameras.multiview', compact('cameras')); }
 }

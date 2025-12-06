@@ -22,8 +22,7 @@ Route::middleware(['auth', 'no_cache', 'role:admin'])
     ->name('admin.')
     ->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
-        
-        // Personal
+
         Route::prefix('personal')->name('personal.')->group(function () {
             Route::get('/', [PersonalController::class, 'index'])->name('index');
             Route::get('/create', [PersonalController::class, 'create'])->name('create');
@@ -34,14 +33,26 @@ Route::middleware(['auth', 'no_cache', 'role:admin'])
             Route::patch('/{user}/toggle', [PersonalController::class, 'toggle'])->name('toggle');
         });
 
-        // Rutas de Cámaras Extra
         Route::get('/cameras/multiview', [CameraController::class, 'multiview'])->name('cameras.multiview');
-        Route::post('/cameras/group', [CameraController::class, 'storeGroup'])->name('cameras.group.store'); // <--- NUEVA RUTA
-
+        Route::post('/cameras/group', [CameraController::class, 'storeGroup'])->name('cameras.group.store'); // <--- ESTA ESTABA BIEN
         Route::resource('cameras', CameraController::class);
     });
 
-// --- SUPERVISOR ---
+// --- USUARIO (Guardia) ---
+Route::middleware(['auth', 'no_cache', 'role:user'])
+    ->prefix('user')
+    ->name('user.')
+    ->group(function () {
+        Route::get('/dashboard', [UserController::class, 'dashboard'])->name('dashboard');
+
+        Route::prefix('cameras')->name('cameras.')->group(function () {
+            Route::get('/multiview', [CameraController::class, 'multiview'])->name('multiview');
+            Route::get('/', [CameraController::class, 'index'])->name('index');
+            Route::get('/{camera}', [CameraController::class, 'show'])->name('show');
+        });
+    });
+
+// --- SUPERVISOR (AQUÍ FALTABA LA RUTA) ---
 Route::middleware(['auth', 'no_cache', 'role:supervisor'])
     ->prefix('supervisor')
     ->name('supervisor.')
@@ -50,8 +61,10 @@ Route::middleware(['auth', 'no_cache', 'role:supervisor'])
 
         Route::prefix('cameras')->name('cameras.')->group(function () {
             Route::get('/multiview', [CameraController::class, 'multiview'])->name('multiview');
-            // NUEVA RUTA AQUÍ TAMBIÉN
+            
+            // --- RUTA NUEVA AGREGADA ---
             Route::post('/group', [CameraController::class, 'storeGroup'])->name('group.store');
+            // ---------------------------
             
             Route::get('/', [CameraController::class, 'index'])->name('index');
             Route::get('/create', [CameraController::class, 'create'])->name('create');
@@ -59,19 +72,6 @@ Route::middleware(['auth', 'no_cache', 'role:supervisor'])
             Route::get('/{camera}', [CameraController::class, 'show'])->name('show');
             Route::get('/{camera}/edit', [CameraController::class, 'edit'])->name('edit');
             Route::put('/{camera}', [CameraController::class, 'update'])->name('update');
-        });
-    });
-
-// --- USUARIO ---
-Route::middleware(['auth', 'no_cache', 'role:user'])
-    ->prefix('user')
-    ->name('user.')
-    ->group(function () {
-        Route::get('/dashboard', [UserController::class, 'dashboard'])->name('dashboard');
-        Route::prefix('cameras')->name('cameras.')->group(function () {
-            Route::get('/multiview', [CameraController::class, 'multiview'])->name('multiview');
-            Route::get('/', [CameraController::class, 'index'])->name('index');
-            Route::get('/{camera}', [CameraController::class, 'show'])->name('show');
         });
     });
 
