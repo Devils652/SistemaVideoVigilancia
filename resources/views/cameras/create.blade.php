@@ -112,10 +112,18 @@
                             </div>
                         </div>
                         
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Grupo (Opcional)</label>
-                            <input type="text" name="group" value="{{ old('group') }}" class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" placeholder="Ej: Oficina Central">
-                        </div>
+<div>
+    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Grupo</label>
+    <div class="flex gap-2">
+        <select name="group" class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+            <option value="" selected>Sin grupo asignado</option>
+            @foreach(\App\Models\CameraGroup::all() as $g)
+                <option value="{{ $g->name }}">{{ $g->name }}</option>
+            @endforeach
+        </select>
+    </div>
+    <p class="text-xs text-slate-500 mt-1">Si no ves el grupo, créalo desde el panel principal.</p>
+</div>
 
                         <div class="pt-4">
                             <button class="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transform transition hover:-translate-y-0.5 active:translate-y-0">

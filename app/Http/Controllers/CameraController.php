@@ -30,19 +30,54 @@ class CameraController extends Controller
         }];
     }
 
-    public function index(Request $request)
+public function index(Request $request)
     {
         $this->authorize('ver_camaras');
 
+        $userRole = Auth::user()->role?->name ?? 'user';
         $query = Camera::query();
-        $userRole = Auth::user()->role->name ?? 'user';
-        
+
+        // Filtro por rol
         if (!in_array($userRole, ['admin', 'supervisor', 'mantenimiento'])) {
             $query->where('status', true);
         }
 
-        $cameras = $query->paginate(12);
-        return view('cameras.index', compact('cameras'));
+        $cameras = $query->orderBy('name')->get();
+
+        // --- LÓGICA DE AGRUPACIÓN ---
+        // 1. Agrupar por el campo 'group'
+        $groupedCameras = $cameras->groupBy(function ($item) {
+            return empty($item->group) ? 'Sin Grupo' : $item->group;
+        });
+
+        // 2. Separar "Sin Grupo" para ponerlo al final
+        $noGroupCameras = $groupedCameras->pull('Sin Grupo');
+
+        // 3. Ordenar los grupos alfabéticamente
+        $groupedCameras = $groupedCameras->sortKeys();
+
+        // 4. Pegar "Sin Grupo" al final si existe
+        if ($noGroupCameras) {
+            $groupedCameras->put('Sin Grupo', $noGroupCameras);
+        }
+
+        return view('cameras.index', compact('groupedCameras'));
+    }
+
+    // Nueva función para guardar el grupo desde el Modal
+    public function storeGroup(Request $request)
+    {
+        $this->authorize('crear_camaras'); // Usamos el mismo permiso
+        
+        $request->validate([
+            'name' => 'required|string|max:255|unique:camera_groups,name'
+        ]);
+
+        \App\Models\CameraGroup::create([
+            'name' => $request->name
+        ]);
+
+        return back()->with('success', 'Grupo creado exitosamente.');
     }
 
     public function create()

@@ -31,6 +31,7 @@ Route::middleware(['auth', 'no_cache', 'role:admin'])
             Route::put('/{user}', [PersonalController::class, 'update'])->name('update');
             Route::delete('/{user}', [PersonalController::class, 'destroy'])->name('destroy');
             Route::patch('/{user}/toggle', [PersonalController::class, 'toggle'])->name('toggle');
+            Route::post('/cameras/group', [CameraController::class, 'storeGroup'])->name('cameras.group.store');
         });
 
         Route::get('/cameras/multiview', [CameraController::class, 'multiview'])->name('cameras.multiview');
@@ -71,6 +72,7 @@ Route::middleware(['auth', 'no_cache', 'role:supervisor'])
             Route::get('/{camera}', [CameraController::class, 'show'])->name('show');
             Route::get('/{camera}/edit', [CameraController::class, 'edit'])->name('edit');
             Route::put('/{camera}', [CameraController::class, 'update'])->name('update');
+            Route::post('/cameras/group', [CameraController::class, 'storeGroup'])->name('cameras.group.store');
         });
     });
 
