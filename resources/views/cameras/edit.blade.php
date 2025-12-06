@@ -68,10 +68,21 @@
                             </div>
                         </div>
                         
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Grupo</label>
-                            <input type="text" name="group" value="{{ $camera->group }}" 
-                                class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20">
+<div>
+                            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Grupo Asignado</label>
+                            <div class="relative">
+                                <select name="group" class="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 appearance-none">
+                                    <option value="">Sin Grupo</option>
+                                    @foreach($groups as $group)
+                                        <option value="{{ $group->name }}" {{ $camera->group == $group->name ? 'selected' : '' }}>
+                                            {{ $group->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="pt-4 flex gap-4">

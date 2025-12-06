@@ -16,13 +16,14 @@ Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 
-// --- RUTAS DE ADMINISTRADOR ---
+// --- ADMINISTRADOR ---
 Route::middleware(['auth', 'no_cache', 'role:admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
-
+        
+        // Personal
         Route::prefix('personal')->name('personal.')->group(function () {
             Route::get('/', [PersonalController::class, 'index'])->name('index');
             Route::get('/create', [PersonalController::class, 'create'])->name('create');
@@ -31,31 +32,16 @@ Route::middleware(['auth', 'no_cache', 'role:admin'])
             Route::put('/{user}', [PersonalController::class, 'update'])->name('update');
             Route::delete('/{user}', [PersonalController::class, 'destroy'])->name('destroy');
             Route::patch('/{user}/toggle', [PersonalController::class, 'toggle'])->name('toggle');
-            
         });
 
+        // Rutas de Cámaras Extra
         Route::get('/cameras/multiview', [CameraController::class, 'multiview'])->name('cameras.multiview');
-        Route::post('/cameras/group', [CameraController::class, 'storeGroup'])->name('cameras.group.store');
+        Route::post('/cameras/group', [CameraController::class, 'storeGroup'])->name('cameras.group.store'); // <--- NUEVA RUTA
+
         Route::resource('cameras', CameraController::class);
     });
 
-// --- RUTAS DE USUARIO NORMAL (Guardia) ---
-Route::middleware(['auth', 'no_cache', 'role:user'])
-    ->prefix('user')
-    ->name('user.')
-    ->group(function () {
-        Route::get('/dashboard', [UserController::class, 'dashboard'])->name('dashboard');
-
-        Route::prefix('cameras')->name('cameras.')->group(function () {
-
-            Route::get('/multiview', [CameraController::class, 'multiview'])->name('multiview');
-
-            Route::get('/', [CameraController::class, 'index'])->name('index');
-            Route::get('/{camera}', [CameraController::class, 'show'])->name('show');
-        });
-    });
-
-// --- RUTAS DE SUPERVISOR ---
+// --- SUPERVISOR ---
 Route::middleware(['auth', 'no_cache', 'role:supervisor'])
     ->prefix('supervisor')
     ->name('supervisor.')
@@ -63,8 +49,9 @@ Route::middleware(['auth', 'no_cache', 'role:supervisor'])
         Route::get('/dashboard', [SupervisorController::class, 'dashboard'])->name('dashboard');
 
         Route::prefix('cameras')->name('cameras.')->group(function () {
-            // NUEVA RUTA: Video Wall
             Route::get('/multiview', [CameraController::class, 'multiview'])->name('multiview');
+            // NUEVA RUTA AQUÍ TAMBIÉN
+            Route::post('/group', [CameraController::class, 'storeGroup'])->name('group.store');
             
             Route::get('/', [CameraController::class, 'index'])->name('index');
             Route::get('/create', [CameraController::class, 'create'])->name('create');
@@ -75,20 +62,30 @@ Route::middleware(['auth', 'no_cache', 'role:supervisor'])
         });
     });
 
-// --- RUTAS DE MANTENIMIENTO ---
+// --- USUARIO ---
+Route::middleware(['auth', 'no_cache', 'role:user'])
+    ->prefix('user')
+    ->name('user.')
+    ->group(function () {
+        Route::get('/dashboard', [UserController::class, 'dashboard'])->name('dashboard');
+        Route::prefix('cameras')->name('cameras.')->group(function () {
+            Route::get('/multiview', [CameraController::class, 'multiview'])->name('multiview');
+            Route::get('/', [CameraController::class, 'index'])->name('index');
+            Route::get('/{camera}', [CameraController::class, 'show'])->name('show');
+        });
+    });
+
+// --- MANTENIMIENTO ---
 Route::middleware(['auth', 'no_cache', 'role:mantenimiento'])
     ->prefix('mantenimiento')
     ->name('mantenimiento.')
     ->group(function () {
-        // Dashboard
         Route::get('/dashboard', function () {
             $totalCameras = \App\Models\Camera::count();
             $offlineCameras = \App\Models\Camera::where('status', false)->count();
             return view('mantenimiento.dashboard', compact('totalCameras', 'offlineCameras'));
         })->name('dashboard');
 
-        // NUEVA RUTA: Video Wall (Antes del resource)
         Route::get('/cameras/multiview', [CameraController::class, 'multiview'])->name('cameras.multiview');
-
         Route::resource('cameras', CameraController::class)->except(['destroy', 'create', 'store']);
     });

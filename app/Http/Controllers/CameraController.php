@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Camera;
+use App\Models\CameraGroup; // <--- IMPORTANTE: Usar el modelo de grupos
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -11,33 +12,26 @@ class CameraController extends Controller
 {
     use AuthorizesRequests;
 
-    // Regla de validación reutilizable para seguridad
     private function getIpValidationRules()
     {
         return ['required', 'string', function ($attribute, $value, $fail) {
-            // 1. ¿Es una IP válida? (Ej: 192.168.1.50)
             $isIp = filter_var($value, FILTER_VALIDATE_IP);
-            
-            // 2. ¿Es una URL segura? (Debe empezar por http:// o https://)
             $isUrl = filter_var($value, FILTER_VALIDATE_URL) && preg_match('/^https?:\/\//', $value);
-            
-            // 3. ¿Es un link de YouTube? (Excepción para demos)
             $isYoutube = str_contains($value, 'youtube.com') || str_contains($value, 'youtu.be');
 
             if (!$isIp && !$isUrl && !$isYoutube) {
-                $fail("La dirección ingresada no es segura. Debe ser una IP válida (192.168.x.x) o una URL que inicie con http:// o https://.");
+                $fail("La dirección debe ser una IP válida, una URL (http/https) o un video de YouTube.");
             }
         }];
     }
 
-public function index(Request $request)
+    public function index(Request $request)
     {
         $this->authorize('ver_camaras');
 
         $userRole = Auth::user()->role?->name ?? 'user';
         $query = Camera::query();
 
-        // Filtro por rol
         if (!in_array($userRole, ['admin', 'supervisor', 'mantenimiento'])) {
             $query->where('status', true);
         }
@@ -45,37 +39,30 @@ public function index(Request $request)
         $cameras = $query->orderBy('name')->get();
 
         // --- LÓGICA DE AGRUPACIÓN ---
-        // 1. Agrupar por el campo 'group'
         $groupedCameras = $cameras->groupBy(function ($item) {
-            return empty($item->group) ? 'Sin Grupo' : $item->group;
+            return $item->group ?: 'Sin Grupo';
         });
 
-        // 2. Separar "Sin Grupo" para ponerlo al final
-        $noGroupCameras = $groupedCameras->pull('Sin Grupo');
-
-        // 3. Ordenar los grupos alfabéticamente
+        $sinGrupo = $groupedCameras->pull('Sin Grupo');
         $groupedCameras = $groupedCameras->sortKeys();
-
-        // 4. Pegar "Sin Grupo" al final si existe
-        if ($noGroupCameras) {
-            $groupedCameras->put('Sin Grupo', $noGroupCameras);
+        
+        if ($sinGrupo) {
+            $groupedCameras->put('Sin Grupo', $sinGrupo);
         }
 
         return view('cameras.index', compact('groupedCameras'));
     }
 
-    // Nueva función para guardar el grupo desde el Modal
+    // --- NUEVA FUNCIÓN QUE FALTABA ---
     public function storeGroup(Request $request)
     {
-        $this->authorize('crear_camaras'); // Usamos el mismo permiso
+        $this->authorize('crear_camaras');
         
         $request->validate([
             'name' => 'required|string|max:255|unique:camera_groups,name'
         ]);
 
-        \App\Models\CameraGroup::create([
-            'name' => $request->name
-        ]);
+        CameraGroup::create(['name' => $request->name]);
 
         return back()->with('success', 'Grupo creado exitosamente.');
     }
@@ -83,7 +70,7 @@ public function index(Request $request)
     public function create()
     {
         $this->authorize('crear_camaras');
-        return view('cameras.create');
+        return view('cameras.create'); // La vista ya usa \App\Models\CameraGroup::all() directamente
     }
 
     public function store(Request $request)
@@ -91,8 +78,8 @@ public function index(Request $request)
         $this->authorize('crear_camaras');
 
         $validated = $request->validate([
-            'name'     => 'required|string|max:255|regex:/^[\pL\s\d\-]+$/u', // Solo letras, números y guiones (Anti-XSS)
-            'ip'       => $this->getIpValidationRules(), // <--- REGLA DE SEGURIDAD APLICADA
+            'name'     => 'required|string|max:255',
+            'ip'       => $this->getIpValidationRules(),
             'location' => 'nullable|string|max:255',
             'status'   => 'required|boolean',
             'group'    => 'nullable|string|max:255',
@@ -103,7 +90,32 @@ public function index(Request $request)
             'user_id' => Auth::id(),
         ]);
 
-        return redirect()->route($this->getRedirectRoute())->with('success', 'Cámara registrada y validada correctamente.');
+        return redirect()->route($this->getRedirectRoute())->with('success', 'Cámara registrada correctamente.');
+    }
+
+    public function edit(Camera $camera)
+    {
+        $this->authorize('editar_camaras');
+        // Enviamos los grupos a la vista de edición
+        $groups = CameraGroup::all(); 
+        return view('cameras.edit', compact('camera', 'groups'));
+    }
+
+    public function update(Request $request, Camera $camera)
+    {
+        $this->authorize('editar_camaras');
+
+        $validated = $request->validate([
+            'name'     => 'required|string|max:255',
+            'ip'       => $this->getIpValidationRules(),
+            'location' => 'nullable|string|max:255',
+            'status'   => 'required|boolean',
+            'group'    => 'nullable|string|max:255',
+        ]);
+
+        $camera->update($validated);
+
+        return redirect()->route($this->getRedirectRoute())->with('success', 'Cámara actualizada correctamente.');
     }
 
     public function show(Camera $camera)
@@ -112,40 +124,16 @@ public function index(Request $request)
         return view('cameras.show', compact('camera'));
     }
 
-    public function edit(Camera $camera)
-    {
-        $this->authorize('editar_camaras');
-        return view('cameras.edit', compact('camera'));
-    }
-
-    public function update(Request $request, Camera $camera)
-    {
-        $this->authorize('editar_camaras');
-
-        $validated = $request->validate([
-            'name'     => 'required|string|max:255|regex:/^[\pL\s\d\-]+$/u',
-            'ip'       => $this->getIpValidationRules(), // <--- REGLA DE SEGURIDAD APLICADA
-            'location' => 'nullable|string|max:255',
-            'status'   => 'required|boolean',
-            'group'    => 'nullable|string|max:255',
-        ]);
-
-        $camera->update($validated);
-
-        return redirect()->route($this->getRedirectRoute())->with('success', 'Configuración de cámara actualizada.');
-    }
-
     public function destroy(Camera $camera)
     {
         $this->authorize('borrar_camaras');
         $camera->delete();
-
-        return redirect()->route($this->getRedirectRoute())->with('success', 'Dispositivo eliminado de forma segura.');
+        return redirect()->route($this->getRedirectRoute())->with('success', 'Cámara eliminada.');
     }
 
     private function getRedirectRoute()
     {
-        $role = Auth::user()->role->name ?? 'user';
+        $role = Auth::user()->role?->name ?? 'user';
         return match ($role) {
             'admin' => 'admin.cameras.index',
             'supervisor' => 'supervisor.cameras.index',
