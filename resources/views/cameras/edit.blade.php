@@ -5,6 +5,7 @@
 @section('contenido')
 
     @php
+        // Detectamos rol para generar la ruta correcta
         $userRole = Auth::user()->role->name ?? 'user';
         $prefix = match ($userRole) {
             'admin' => 'admin.',
@@ -41,6 +42,7 @@
                     @method('PUT')
 
                     <div class="space-y-6">
+                        
                         <div>
                             <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Nombre</label>
                             <input type="text" name="name" value="{{ $camera->name }}" required 

@@ -7,6 +7,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PersonalController;
 use App\Http\Controllers\CameraController;
 use App\Http\Controllers\SupervisorController;
+use App\Http\Controllers\MantenimientoController; // Asumiendo que este controlador se usará para el dashboard
 
 Route::view('/', 'index')->name('index');
 
@@ -23,6 +24,7 @@ Route::middleware(['auth', 'no_cache', 'role:admin'])
     ->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 
+        // Personal
         Route::prefix('personal')->name('personal.')->group(function () {
             Route::get('/', [PersonalController::class, 'index'])->name('index');
             Route::get('/create', [PersonalController::class, 'create'])->name('create');
@@ -33,8 +35,9 @@ Route::middleware(['auth', 'no_cache', 'role:admin'])
             Route::patch('/{user}/toggle', [PersonalController::class, 'toggle'])->name('toggle');
         });
 
+        // RUTAS DE CÁMARAS (Corregidas para mejor consistencia)
         Route::get('/cameras/multiview', [CameraController::class, 'multiview'])->name('cameras.multiview');
-        Route::post('/cameras/group', [CameraController::class, 'storeGroup'])->name('cameras.group.store'); // <--- ESTA ESTABA BIEN
+        Route::post('/cameras/group', [CameraController::class, 'storeGroup'])->name('cameras.group.store'); // POST de creación de grupo
         Route::resource('cameras', CameraController::class);
     });
 
@@ -52,7 +55,7 @@ Route::middleware(['auth', 'no_cache', 'role:user'])
         });
     });
 
-// --- SUPERVISOR (AQUÍ FALTABA LA RUTA) ---
+// --- SUPERVISOR ---
 Route::middleware(['auth', 'no_cache', 'role:supervisor'])
     ->prefix('supervisor')
     ->name('supervisor.')
@@ -62,9 +65,7 @@ Route::middleware(['auth', 'no_cache', 'role:supervisor'])
         Route::prefix('cameras')->name('cameras.')->group(function () {
             Route::get('/multiview', [CameraController::class, 'multiview'])->name('multiview');
             
-            // --- RUTA NUEVA AGREGADA ---
-            Route::post('/group', [CameraController::class, 'storeGroup'])->name('group.store');
-            // ---------------------------
+            Route::post('/group', [CameraController::class, 'storeGroup'])->name('group.store'); // RUTA POST DEL MODAL
             
             Route::get('/', [CameraController::class, 'index'])->name('index');
             Route::get('/create', [CameraController::class, 'create'])->name('create');
@@ -80,6 +81,7 @@ Route::middleware(['auth', 'no_cache', 'role:mantenimiento'])
     ->prefix('mantenimiento')
     ->name('mantenimiento.')
     ->group(function () {
+        // Dashboard
         Route::get('/dashboard', function () {
             $totalCameras = \App\Models\Camera::count();
             $offlineCameras = \App\Models\Camera::where('status', false)->count();
